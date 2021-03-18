@@ -10,7 +10,7 @@ use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_
 use mc_common::{
     logger::{log, Logger},
     lru::LruCache,
-    ResponderId,
+    trace_time, ResponderId,
 };
 use mc_transaction_core::{Block, BlockData, BlockID};
 use protobuf::Message;
@@ -188,6 +188,7 @@ impl ReqwestTransactionsFetcher {
                 .map_err(|err| ReqwestTransactionsFetcherError::IO(path.to_string(), err))?
                 .to_vec()
         } else {
+            trace_time!(self.logger, "fetch_protobuf_object {}", url);
             let mut response = self.client.get(url.as_str()).send().map_err(|err| {
                 ReqwestTransactionsFetcherError::ReqwestError(url.to_string(), err)
             })?;
