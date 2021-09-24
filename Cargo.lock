@@ -1652,9 +1652,9 @@ checksum = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
 
 [[package]]
 name = "hex"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hex_fmt"
@@ -2312,7 +2312,7 @@ version = "1.1.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
- "hex 0.4.2",
+ "hex 0.4.3",
  "hkdf",
  "mc-account-keys",
  "mc-crypto-keys",
@@ -2460,7 +2460,7 @@ dependencies = [
  "chrono",
  "digest 0.9.0",
  "displaydoc",
- "hex 0.4.2",
+ "hex 0.4.3",
  "hex_fmt",
  "lazy_static",
  "mbedtls",
@@ -2679,7 +2679,7 @@ name = "mc-consensus-enclave-impl"
 version = "1.1.2"
 dependencies = [
  "cargo-emit",
- "hex 0.4.2",
+ "hex 0.4.3",
  "mbedtls",
  "mc-account-keys",
  "mc-attest-core",
@@ -2785,7 +2785,7 @@ dependencies = [
  "fs_extra",
  "futures 0.3.8",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",
@@ -3137,7 +3137,7 @@ version = "1.1.0"
 dependencies = [
  "displaydoc",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-account-keys",
  "mc-api",
  "mc-common",
@@ -3217,6 +3217,7 @@ name = "mc-fog-ingest-enclave-impl"
 version = "1.1.0"
 dependencies = [
  "aligned-cmov",
+ "hex 0.4.3",
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3265,7 +3266,7 @@ dependencies = [
  "displaydoc",
  "futures 0.3.8",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "itertools 0.10.1",
  "lazy_static",
  "maplit",
@@ -3443,7 +3444,7 @@ dependencies = [
  "displaydoc",
  "futures 0.3.8",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "lazy_static",
  "mc-account-keys",
  "mc-api",
@@ -3863,7 +3864,7 @@ version = "1.1.0"
 dependencies = [
  "curve25519-dalek",
  "digest 0.9.0",
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-hashes",
@@ -4071,7 +4072,7 @@ dependencies = [
  "displaydoc",
  "futures 0.3.8",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",
@@ -4218,7 +4219,7 @@ dependencies = [
  "crossbeam-channel 0.5.0",
  "displaydoc",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "hex_fmt",
  "libz-sys",
  "lmdb-rkv",
@@ -4292,7 +4293,7 @@ name = "mc-mobilecoind-json"
 version = "1.1.2"
 dependencies = [
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-api",
  "mc-common",
  "mc-crypto-keys",
@@ -4401,7 +4402,7 @@ name = "mc-peers-test-utils"
 version = "1.1.2"
 dependencies = [
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -4568,7 +4569,7 @@ dependencies = [
 name = "mc-test-vectors-account-keys"
 version = "1.1.2"
 dependencies = [
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-account-keys",
  "mc-account-keys-slip10",
  "mc-test-vectors-definitions",
@@ -4681,7 +4682,7 @@ dependencies = [
 name = "mc-util-b58-decoder"
 version = "1.1.2"
 dependencies = [
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-api",
  "structopt",
 ]
@@ -4746,7 +4747,7 @@ dependencies = [
  "base64 0.13.0",
  "binascii",
  "displaydoc",
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-util-repr-bytes",
  "serde",
 ]
@@ -4792,7 +4793,7 @@ dependencies = [
  "displaydoc",
  "futures 0.3.8",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "hex_fmt",
  "hmac 0.10.1",
  "lazy_static",
@@ -4830,7 +4831,7 @@ dependencies = [
 name = "mc-util-grpc-token-generator"
 version = "1.1.2"
 dependencies = [
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-common",
  "mc-util-grpc",
  "percent-encoding 2.1.0",
@@ -4846,7 +4847,7 @@ version = "1.1.2"
 name = "mc-util-keyfile"
 version = "1.1.2"
 dependencies = [
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-account-keys",
  "mc-crypto-rand",
  "mc-util-from-random",
@@ -4950,7 +4951,7 @@ dependencies = [
  "base64 0.13.0",
  "displaydoc",
  "ed25519",
- "hex 0.4.2",
+ "hex 0.4.3",
  "mc-common",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -4969,7 +4970,7 @@ dependencies = [
  "displaydoc",
  "futures 0.3.8",
  "grpcio",
- "hex 0.4.2",
+ "hex 0.4.3",
  "lazy_static",
  "lmdb-rkv",
  "mc-account-keys",
@@ -6263,7 +6264,7 @@ dependencies = [
  "base64 0.11.0",
  "bytes 0.4.12",
  "futures 0.1.29",
- "hex 0.4.2",
+ "hex 0.4.3",
  "hmac 0.7.1",
  "http 0.1.21",
  "hyper 0.12.35",

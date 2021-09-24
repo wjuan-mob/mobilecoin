@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+use hex;
+use mc_util_serial;
 use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
@@ -30,6 +32,11 @@ fn test_ingest_enclave(logger: Logger) {
         // make alice and bob
         let alice_account = AccountKey::random_with_fog(&mut rng);
         let bob_account = AccountKey::random_with_fog(&mut rng);
+        log::info!(
+            logger,
+            "Bob Account Key: {}",
+            hex::encode(mc_util_serial::encode(&bob_account)),
+        );
 
         // make ingest enclave business logic object
         let enclave = SgxIngestEnclave::<HeapORAMStorageCreator>::new(logger.clone());
@@ -124,6 +131,12 @@ fn test_ingest_enclave(logger: Logger) {
             let tx_out_record = bob_fog_credential
                 .decrypt_tx_out_result(tx_rows[idx].payload.clone())
                 .unwrap();
+            log::info!(
+                logger,
+                "TxOut Record #{}: {}",
+                idx,
+                hex::encode(mc_util_serial::encode(&tx_out_record))
+            );
             assert_eq!(tx_out_record.block_index, txs_for_ingest.block_index);
             assert_eq!(
                 tx_out_record.tx_out_global_index,
