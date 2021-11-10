@@ -363,6 +363,11 @@ impl CachedTxData {
     pub fn poll_fog_for_txos(&mut self, fog_view_client: &mut FogViewGrpcClient) -> Result<usize> {
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
         // Do the fog view protocol, log any errors, and consume any new transactions
+        /*let tracer = tracer();
+        let (txo_records, errors) = tracer.in_span("fog_view_client.poll", |_cx| {
+            fog_view_client.poll(&mut self.rng_set, &UserPrivate::from(&self.account_key))
+        });*/
+
         let (txo_records, errors) =
             fog_view_client.poll(&mut self.rng_set, &UserPrivate::from(&self.account_key));
 

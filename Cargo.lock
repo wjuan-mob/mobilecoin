@@ -4259,6 +4259,7 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-util-grpc",
  "mc-util-serial",
+ "opentelemetry",
 ]
 
 [[package]]
