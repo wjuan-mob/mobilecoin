@@ -194,7 +194,7 @@ impl Client {
             .with_trace_id(TraceId::from_u128(0x4000000000000 + block_count as u128))
             .start(&tracer);
 
-        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_index as i64));
+        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_count as i64));
         span.end();
 
         Ok(block_count)
