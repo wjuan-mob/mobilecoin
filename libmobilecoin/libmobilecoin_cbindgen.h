@@ -762,6 +762,26 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output(FfiMutPtr<McTransaction
  * * `transaction_builder` - must not have been previously consumed by a call
  *   to `build`.
  * * `recipient_address` - must be a valid `PublicAddress`.
+ * * `out_subaddress_spend_public_key` - length must be >= 32.
+ *
+ * # Errors
+ *
+ * * `LibMcError::AttestationVerification`
+ * * `LibMcError::InvalidInput`
+ */
+FfiOptOwnedPtr<McData> mc_transaction_builder_add_change_output(FfiRefPtr<McAccountKey> account_key,
+                                                                FfiMutPtr<McTransactionBuilder> transaction_builder,
+                                                                uint64_t amount,
+                                                                FfiOptMutPtr<McRngCallback> rng_callback,
+                                                                FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
+                                                                FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `transaction_builder` - must not have been previously consumed by a call
+ *   to `build`.
+ * * `recipient_address` - must be a valid `PublicAddress`.
  * * `fog_hint_address` - must be a valid `PublicAddress` with `fog_info`.
  * * `out_tx_out_confirmation_number` - length must be >= 32.
  *
