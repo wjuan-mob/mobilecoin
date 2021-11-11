@@ -447,6 +447,7 @@ pub extern "C" fn mc_transaction_builder_add_output(
     })
 }
 
+
 /// # Preconditions
 ///
 /// * `transaction_builder` - must not have been previously consumed by a call
@@ -461,20 +462,46 @@ pub extern "C" fn mc_transaction_builder_add_output(
 /// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_transaction_builder_add_output_with_fog_hint_address(
-    _transaction_builder: FfiMutPtr<McTransactionBuilder>,
-    _amount: u64,
-    _recipient_address: FfiRefPtr<McPublicAddress>,
-    _fog_hint_address: FfiRefPtr<McPublicAddress>,
-    _rng_callback: FfiOptMutPtr<McRngCallback>,
-    _out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
-    _out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+    transaction_builder: FfiMutPtr<McTransactionBuilder>,
+    amount: u64,
+    recipient_address: FfiRefPtr<McPublicAddress>,
+    fog_hint_address: FfiRefPtr<McPublicAddress>,
+    rng_callback: FfiOptMutPtr<McRngCallback>,
+    out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<McData> {
     // FIXME(chris): The SDK should probably stop binding to this function, I don't
     // believe that there is legitimate use for this.
     // It should bind "add_change_output" instead.
     // Please speak to me if you disagree.
-    unimplemented!("TransactionBuilder::add_output_with_fog_hint_address was removed, please use add_change_output");
+    ffi_boundary_with_error(out_error, || {
+        let transaction_builder = transaction_builder
+            .into_mut()
+            .as_mut()
+            .expect("McTransactionBuilder instance has already been used to build a Tx");
+        let recipient_address =
+            PublicAddress::try_from_ffi(&recipient_address).expect("recipient_address is invalid");
+        let fog_hint_address =
+            PublicAddress::try_from_ffi(&fog_hint_address).expect("fog_hint_address is invalid");
+        let mut rng = SdkRng::from_ffi(rng_callback);
+        let out_tx_out_confirmation_number = out_tx_out_confirmation_number
+            .into_mut()
+            .as_slice_mut_of_len(TxOutConfirmationNumber::size())
+            .expect("out_tx_out_confirmation_number length is insufficient");
+
+        let (tx_out, confirmation) = transaction_builder.add_output_with_fog_hint_address(
+            amount,
+            &recipient_address,
+            &fog_hint_address,
+            |_| Ok(MemoPayload::default()),
+            &mut rng,
+        )?;
+
+        out_tx_out_confirmation_number.copy_from_slice(confirmation.as_ref());
+        Ok(mc_util_serial::encode(&tx_out))
+    })
 }
+
 
 /// # Preconditions
 ///
