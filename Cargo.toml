@@ -133,6 +133,7 @@ members = [
     "util/metrics",
     "util/repr-bytes",
     "util/serial",
+    "util/telemetry",
     "util/test-helper",
     "util/test-vector",
     "util/uri",
