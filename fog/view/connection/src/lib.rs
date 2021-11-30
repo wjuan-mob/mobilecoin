@@ -12,12 +12,9 @@ use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::FogViewUri;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use opentelemetry::{global, global::BoxedTracer, trace::Tracer};
 use std::sync::Arc;
+use mc_util_telemetry::{tracer, Tracer};
 
-fn tracer() -> BoxedTracer {
-    global::tracer_with_version("mc-fog-view-connection", env!("CARGO_PKG_VERSION"))
-}
 
 pub struct FogViewGrpcClient {
     conn: EnclaveConnection<FogViewUri, view_grpc::FogViewApiClient>,
@@ -48,7 +45,7 @@ impl FogViewConnection for FogViewGrpcClient {
         start_from_block_index: u64,
         search_keys: Vec<Vec<u8>>,
     ) -> Result<QueryResponse, Self::Error> {
-        tracer().in_span("fog_view_grpc_request", |_cx_| {
+        tracer!().in_span("fog_view_grpc_request", |_cx_| {
             trace_time!(self.logger, "FogViewGrpcClient::request");
 
             log::trace!(

@@ -4166,7 +4166,7 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-util-grpc",
  "mc-util-serial",
- "opentelemetry",
+ "mc-util-telemetry",
 ]
 
 [[package]]
@@ -4311,7 +4311,6 @@ dependencies = [
  "futures 0.3.17",
  "grpcio",
  "hex",
- "hostname",
  "lazy_static",
  "mc-attest-api",
  "mc-attest-core",
@@ -4339,10 +4338,9 @@ dependencies = [
  "mc-util-metered-channel",
  "mc-util-metrics",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mc-util-test-helper",
  "mc-util-uri",
- "opentelemetry",
- "opentelemetry-jaeger",
  "pem",
  "rand 0.8.4",
  "rand_core 0.6.3",
