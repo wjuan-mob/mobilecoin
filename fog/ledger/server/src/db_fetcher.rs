@@ -247,6 +247,19 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                             shared_state.last_known_block_cumulative_txo_count = global_txo_count;
                         }
                     }
+                    match self.db.get_latest_block() {
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "Unexpected error when checking for ledger latest block version {}: {:?}",
+                                self.next_block_index,
+                                e
+                            );
+                        }
+                        Ok(block) => {
+                            shared_state.latest_block_version = block.version;
+                        }
+                    }
                 });
 
                 self.next_block_index += 1;
@@ -258,7 +271,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
     fn add_records_to_enclave(&mut self, block_index: u64, records: Vec<KeyImageData>) {
         let num_records = records.len();
 
-        let _info = retry(delay::Fixed::from_millis(5000), || {
+        let _info = retry(delay::Fixed::from_millis(5000).map(delay::jitter), || {
             trace_time!(
                 self.logger,
                 "Added {} records into the enclave",

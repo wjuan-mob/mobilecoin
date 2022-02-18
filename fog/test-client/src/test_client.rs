@@ -16,6 +16,7 @@ use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
 use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, BlockIndex, Token};
 use mc_transaction_std::MemoType;
+use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Context, Key, Span,
     SpanKind, Tracer,
@@ -25,6 +26,7 @@ use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use std::{
+    ops::Sub,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
@@ -79,6 +81,7 @@ impl Default for TestClientPolicy {
 /// An object which can run test transfers
 pub struct TestClient {
     policy: TestClientPolicy,
+    grpc_retry_config: GrpcRetryConfig,
     account_keys: Vec<AccountKey>,
     consensus_uris: Vec<ConsensusClientUri>,
     fog_ledger: FogLedgerUri,
@@ -110,15 +113,20 @@ impl TestClient {
         consensus_uris: Vec<ConsensusClientUri>,
         fog_ledger: FogLedgerUri,
         fog_view: FogViewUri,
+        grpc_retry_config: GrpcRetryConfig,
         logger: Logger,
     ) -> Self {
         let tx_info = Arc::new(Default::default());
-        // The test client uses accounts_keys.len() many clients in round robin
-        // fashion. If we set the healing time of health tracker to be this number,
-        // then we will heal when every client has successfully transferred again.
-        let health_tracker = Arc::new(HealthTracker::new(account_keys.len()));
+        // As noted in the HealthTracker documentation, healing_time refers
+        // to the number of successful transactions that need to occur before
+        // we can be considered healthy. We want one successful transfer to make
+        // us healthy rather than wait for every account to experience a
+        // successful transaction.
+        let healing_time = 1;
+        let health_tracker = Arc::new(HealthTracker::new(healing_time));
         Self {
             policy,
+            grpc_retry_config,
             account_keys,
             consensus_uris,
             fog_ledger,
@@ -193,6 +201,7 @@ impl TestClient {
                 account_key.clone(),
                 self.logger.clone(),
             )
+            .grpc_retry_config(self.grpc_retry_config)
             .ring_size(RING_SIZE)
             .use_rth_memos(self.policy.test_rth_memos)
             .address_book(address_book.clone())
@@ -643,7 +652,20 @@ impl TestClient {
     /// prometheus counters
     ///
     /// Arguments:
-    /// * period: The amount of time we wait between test transfers
+    /// * period: The amount of time we allot for a transfer to take place. This
+    /// allows us to dictate how many transfers should be completed by the test
+    /// client per day.
+    ///
+    /// E.g. If period is 60 seconds, then the test client *should* make 1440
+    /// transfers per day.
+    ///
+    /// The period should be larger than the average time expected for a
+    /// transfer to complete. If a transfer takes longer than the period, then
+    /// we don't sleep for any time after the transfer completes. As such, these
+    /// slow transfers will decrease the number of transfers per day, and
+    /// therefore we can only use the period to approximate daily transfer rate,
+    /// but it should be equal in most cases where the period is sufficiently
+    /// larger than the expected transfer duration.
     pub fn run_continuously(&self, period: Duration) {
         let client_count = self.account_keys.len() as usize;
         assert!(client_count > 1);
@@ -661,6 +683,7 @@ impl TestClient {
             let source_client = clients[source_index].clone();
             let target_client = clients[target_index].clone();
 
+            let transfer_start = Instant::now();
             match self.test_transfer(source_client, source_index, target_client, target_index) {
                 Ok(_) => {
                     log::info!(self.logger, "Transfer succeeded");
@@ -710,10 +733,24 @@ impl TestClient {
                     }
                 }
             }
+            let transfer_duration = transfer_start.elapsed();
+            let sleep_duration = match period.checked_sub(transfer_duration) {
+                Some(duration) => duration,
+                None => {
+                    let excess_transaction_time = transfer_duration.sub(period);
+                    log::warn!(
+                        self.logger,
+                        "Transfer took {} seconds. This is {} seconds more than the allotted transfer time.",
+                        transfer_duration.as_secs(),
+                        excess_transaction_time.as_secs()
+                    );
+                    Duration::ZERO
+                }
+            };
 
             ti += 1;
             self.health_tracker.set_counter(ti);
-            std::thread::sleep(period);
+            std::thread::sleep(sleep_duration);
         }
     }
 }
@@ -770,8 +807,7 @@ impl ReceiveTxWorker {
                 let span = tracer
                     .span_builder("fog_view_received")
                     .with_kind(SpanKind::Server)
-                    .with_parent_context(parent_context)
-                    .start(&tracer);
+                    .start_with_context(&tracer, &parent_context);
                 let _active = mark_span_as_active(span);
 
                 loop {
@@ -981,11 +1017,6 @@ impl core::fmt::Display for TxInfo {
 ///
 /// * If a failure is observed, we are unhealthy (immediately)
 /// * If no failure is observed for a long enough time, we are healthy again
-///
-/// The amount of time is the "healing_time" and it is expected to be set
-/// to the number of clients, so that when we go around once in round-robin
-/// fashion and all clients are successful, we are considered healed, and not
-/// before that.
 #[derive(Default)]
 pub struct HealthTracker {
     // Set to i for the duration of the i'th transfer
@@ -994,7 +1025,13 @@ pub struct HealthTracker {
     have_failure: AtomicBool,
     // The counter value during the most recent failure
     last_failure: AtomicUsize,
-    // Healing time: How many successful transfers needed to forget a failure
+    // How many successful transfers needed to forget a previous unsuccessful
+    // transaction and enable us to be healthy. (This usage of the word "time"
+    // does not refer to duration or seconds elapsed).
+    //
+    // Suppose you set this value to the number of accounts that are being
+    // tested and a failure occurs. In this scenario, we can only be healthy
+    // once each account in succession experiences a successful transfer.
     healing_time: usize,
 }
 
@@ -1002,8 +1039,8 @@ impl HealthTracker {
     /// Make a new healthy tracker.
     /// Sets LAST_POLLING_SUCCESSFUL to true initially.
     ///
-    /// Takes "healing time" which is the number of successful transfers before
-    /// we consider ourselves healthy again
+    /// * `healing_time` - number of successful transfers before we consider
+    /// ourselves healthy again
     pub fn new(healing_time: usize) -> Self {
         counters::LAST_POLLING_SUCCESSFUL.set(1);
         Self {

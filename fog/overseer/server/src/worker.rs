@@ -14,7 +14,6 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
-use mc_fog_uri::FogIngestUri;
 use retry::{delay::Fixed, retry_with_index, OperationResult};
 use std::{
     convert::TryFrom,
@@ -43,11 +42,8 @@ pub struct OverseerWorker {
 }
 
 impl OverseerWorker {
-    /// Retry failed GRPC requests every 10 seconds.
-    const GRPC_RETRY_SECONDS: Duration = Duration::from_millis(10000);
-
     pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
-        ingest_cluster_uris: Vec<FogIngestUri>,
+        ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
         recovery_db: DB,
         logger: Logger,
         is_enabled: Arc<AtomicBool>,
@@ -58,18 +54,6 @@ impl OverseerWorker {
         let thread_is_enabled = is_enabled;
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
-        let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
-        let ingest_clients: Vec<FogIngestGrpcClient> = ingest_cluster_uris
-            .iter()
-            .map(|fog_ingest_uri| {
-                FogIngestGrpcClient::new(
-                    fog_ingest_uri.clone(),
-                    Self::GRPC_RETRY_SECONDS,
-                    grpcio_env.clone(),
-                    logger.clone(),
-                )
-            })
-            .collect();
         let join_handle = Some(
             ThreadBuilder::new()
                 .name("OverseerWorker".to_string())
@@ -112,7 +96,7 @@ impl Drop for OverseerWorker {
 struct OverseerWorkerThread<DB: RecoveryDb> {
     /// The list of FogIngestClients that Overseer uses to communicate with
     /// each node in the Fog Ingest cluster that it's monitoring.
-    ingest_clients: Vec<FogIngestGrpcClient>,
+    ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
 
     /// The database that contains, among other things, info on the Fog Ingest
     /// cluster's ingress keys.
@@ -147,7 +131,7 @@ where
     const NUMBER_OF_TRIES: usize = 3;
 
     pub fn start(
-        ingest_clients: Vec<FogIngestGrpcClient>,
+        ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
         recovery_db: DB,
         is_enabled: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
@@ -215,7 +199,7 @@ where
                             log::info!(self.logger, "Automatic failover completed successfully.")
                         }
                         Err(err) => {
-                            log::error!(self.logger, "Automatic failover failed: {:?}", err)
+                            log::error!(self.logger, "Automatic failover failed: {}", err)
                         }
                     };
                 }
@@ -239,14 +223,10 @@ where
                                     .get_ingress_pubkey()
                             })
                             .collect();
-                    log::error!(
-                        self.logger,
-                        "There are multiple active nodes in the Fog Ingest cluster. Active ingress keys: {:?}",
-                        active_node_ingress_pubkeys
-                    );
-                    // TODO: Set up sentry alerts and signal to ops that two
-                    // keys are active at once. This is
-                    // unexpected.
+                    let error_message =
+                        format!("Active ingress keys: {:?}", active_node_ingress_pubkeys);
+                    let error = OverseerError::MultipleActiveNodes(error_message);
+                    log::error!(self.logger, "{}", error);
                 }
             }
         }
@@ -333,9 +313,11 @@ where
                 Ok(())
             }
             _ => {
-                log::error!(self.logger, "Found multiple outstanding keys {:?}. This requires manual intervention. Disabling overseer.", inactive_outstanding_keys);
                 self.is_enabled.store(false, Ordering::SeqCst);
-                Err(OverseerError::MultipleOutstandingKeys("Multiple outstanding keys found. This is unexpected and requires manual intervention. As such, we've disabled overseer. Take action and then enable overseer.".to_string()))
+                let error_message = format!("This is unexpected and requires manual intervention. As such, we've disabled overseer. Take the appropriate action and then re-enable overseer by calling the /enable endpoint. Inactive oustanding keys: {:?}", inactive_outstanding_keys);
+                Err(OverseerError::MultipleInactiveOutstandingKeys(
+                    error_message,
+                ))
             }
         }
     }

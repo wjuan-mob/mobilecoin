@@ -14,7 +14,8 @@ use mc_consensus_enclave_api::{
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
 use mc_transaction_core::{
-    tx::TxOutMembershipProof, Block, BlockContents, BlockSignature, TokenId,
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature, TokenId,
 };
 
 use mockall::*;
@@ -77,7 +78,8 @@ mock! {
         fn form_block(
             &self,
             parent_block: &Block,
-            txs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+            encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+            root_element: &TxOutMembershipElement,
         ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
     }
 

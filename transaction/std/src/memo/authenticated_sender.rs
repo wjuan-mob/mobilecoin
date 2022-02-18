@@ -29,7 +29,7 @@ use subtle::Choice;
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct AuthenticatedSenderMemo {
     /// The memo data
-    memo_data: [u8; 44],
+    memo_data: [u8; 64],
 }
 
 impl RegisteredMemoType for AuthenticatedSenderMemo {
@@ -53,11 +53,11 @@ impl AuthenticatedSenderMemo {
         tx_out_public_key: &CompressedRistrettoPublic,
     ) -> Self {
         // The layout of the memo is:
-        // [0-16] address hash
-        // [16-28] unused
-        // [28-44] HMAC
+        // [0-16) address hash
+        // [16-48) unused
+        // [48-64) HMAC
 
-        let mut memo_data = [0u8; 44];
+        let mut memo_data = [0u8; 64];
         memo_data[..16].copy_from_slice(cred.address_hash.as_ref());
 
         let shared_secret = cred
@@ -70,7 +70,7 @@ impl AuthenticatedSenderMemo {
             Self::MEMO_TYPE_BYTES,
             &memo_data,
         );
-        memo_data[28..].copy_from_slice(&hmac_value);
+        memo_data[48..].copy_from_slice(&hmac_value);
 
         Self { memo_data }
     }
@@ -125,16 +125,16 @@ impl AuthenticatedSenderMemo {
     }
 }
 
-impl From<&[u8; 44]> for AuthenticatedSenderMemo {
-    fn from(src: &[u8; 44]) -> Self {
-        let mut memo_data = [0u8; 44];
+impl From<&[u8; 64]> for AuthenticatedSenderMemo {
+    fn from(src: &[u8; 64]) -> Self {
+        let mut memo_data = [0u8; 64];
         memo_data.copy_from_slice(src);
         Self { memo_data }
     }
 }
 
-impl From<AuthenticatedSenderMemo> for [u8; 44] {
-    fn from(src: AuthenticatedSenderMemo) -> [u8; 44] {
+impl From<AuthenticatedSenderMemo> for [u8; 64] {
+    fn from(src: AuthenticatedSenderMemo) -> [u8; 64] {
         src.memo_data
     }
 }

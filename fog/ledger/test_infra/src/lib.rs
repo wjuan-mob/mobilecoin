@@ -14,7 +14,7 @@ use mc_ledger_db::{Error, Ledger};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{TxOut, TxOutMembershipProof},
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockSignature,
 };
 
@@ -105,8 +105,12 @@ impl Ledger for MockLedger {
         Ok(self.num_blocks)
     }
 
-    fn get_block(&self, _block_number: u64) -> Result<Block, Error> {
-        unimplemented!()
+    fn get_block(&self, block_number: u64) -> Result<Block, Error> {
+        if block_number < self.num_blocks {
+            Ok(Block::default())
+        } else {
+            Err(Error::NotFound)
+        }
     }
 
     fn get_block_signature(&self, _block_number: u64) -> Result<BlockSignature, Error> {
@@ -177,6 +181,10 @@ impl Ledger for MockLedger {
     }
 
     fn get_block_index_by_tx_out_index(&self, _tx_out_index: u64) -> Result<u64, Error> {
+        unimplemented!()
+    }
+
+    fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
         unimplemented!()
     }
 }

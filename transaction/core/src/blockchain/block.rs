@@ -199,7 +199,9 @@ pub fn compute_block_id(
 #[cfg(test)]
 mod block_tests {
     use crate::{
+        encrypted_fog_hint::EncryptedFogHint,
         membership_proofs::Range,
+        ring_signature::KeyImage,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
         Block, BlockContents, BlockContentsHash, BlockID, BLOCK_VERSION,
     };
@@ -210,6 +212,36 @@ mod block_tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 
+    fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
+        let (key_images, outputs) = get_key_images_and_outputs(rng);
+        BlockContents::new(key_images, outputs)
+    }
+
+    fn get_key_images_and_outputs<RNG: CryptoRng + RngCore>(
+        rng: &mut RNG,
+    ) -> (Vec<KeyImage>, Vec<TxOut>) {
+        let recipient = AccountKey::random(rng);
+
+        let outputs: Vec<TxOut> = (0..8)
+            .map(|_i| {
+                TxOut::new(
+                    rng.next_u64(),
+                    &recipient.default_subaddress(),
+                    &RistrettoPrivate::from_random(rng),
+                    EncryptedFogHint::fake_onetime_hint(rng),
+                )
+                .unwrap()
+            })
+            .collect();
+
+        let key_images = vec![
+            KeyImage::from(rng.next_u64()),
+            KeyImage::from(rng.next_u64()),
+            KeyImage::from(rng.next_u64()),
+        ];
+        (key_images, outputs)
+    }
+
     fn get_block<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
         let bytes = [14u8; 32];
         let parent_id = BlockID::try_from(&bytes[..]).unwrap();
@@ -219,21 +251,31 @@ mod block_tests {
             hash: TxOutMembershipHash::from([0u8; 32]),
         };
 
-        let recipient = AccountKey::random(rng);
+        let block_contents = get_block_contents(rng);
 
-        let outputs: Vec<TxOut> = (0..8)
-            .map(|_i| {
-                TxOut::new(
-                    45,
-                    &recipient.default_subaddress(),
-                    &RistrettoPrivate::from_random(rng),
-                    Default::default(),
-                )
-                .unwrap()
-            })
-            .collect();
+        Block::new(
+            BLOCK_VERSION,
+            &parent_id,
+            3,
+            400,
+            &root_element,
+            &block_contents,
+        )
+    }
 
-        let key_images = Vec::new(); // TODO: include key images.
+    fn get_block_with_no_memo<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
+        let bytes = [14u8; 32];
+        let parent_id = BlockID::try_from(&bytes[..]).unwrap();
+
+        let root_element = TxOutMembershipElement {
+            range: Range::new(0, 15).unwrap(),
+            hash: TxOutMembershipHash::from([0u8; 32]),
+        };
+        let (key_images, mut outputs) = get_key_images_and_outputs(rng);
+        for ref mut output in outputs.iter_mut() {
+            output.e_memo = None;
+        }
+
         let block_contents = BlockContents::new(key_images, outputs);
         Block::new(
             BLOCK_VERSION,
@@ -318,5 +360,52 @@ mod block_tests {
     // TODO: Block::new should return an error if `tx_hashes` contains duplicates.
     fn test_block_errors_on_duplicate_tx_hashes() {
         unimplemented!()
+    }
+
+    #[test]
+    /// The block ID and block contents hash do not change as the code evolves.
+    /// This test was written by writing a failed assert and then copying the
+    /// actual block id into the test. This should hopefully catches cases where
+    /// we add/change Block/BlockContents and accidentally break id
+    /// calculation of old blocks.
+    fn test_hashing_is_consistent() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        //Check hash with memo
+        let block = get_block(&mut rng);
+        assert_eq!(
+            block.id.as_ref(),
+            &[
+                118, 205, 187, 34, 207, 104, 52, 137, 97, 124, 79, 205, 112, 204, 146, 217, 128,
+                178, 169, 214, 231, 120, 46, 237, 17, 93, 59, 136, 101, 131, 197, 217
+            ]
+        );
+
+        let block_contents = get_block_contents(&mut rng);
+        assert_eq!(
+            block_contents.hash().as_ref(),
+            &[
+                130, 252, 161, 182, 34, 248, 219, 175, 99, 76, 204, 54, 204, 35, 147, 41, 168, 222,
+                68, 11, 76, 106, 243, 173, 136, 27, 208, 27, 85, 199, 193, 241
+            ]
+        );
+
+        //Check hash without memo
+        let block_with_no_memo = get_block_with_no_memo(&mut rng);
+        assert_eq!(
+            block_with_no_memo.id.as_ref(),
+            &[
+                243, 102, 219, 76, 169, 151, 159, 65, 84, 34, 178, 32, 207, 95, 133, 127, 68, 161,
+                140, 254, 120, 243, 90, 232, 156, 40, 132, 101, 203, 160, 12, 159
+            ]
+        );
+
+        assert_eq!(
+            block_with_no_memo.contents_hash.as_ref(),
+            &[
+                69, 203, 184, 52, 204, 228, 5, 91, 161, 228, 220, 116, 182, 23, 169, 32, 76, 104,
+                121, 186, 195, 20, 142, 138, 69, 155, 193, 215, 226, 117, 134, 74
+            ]
+        );
     }
 }
