@@ -5,7 +5,7 @@ use mc_account_keys::AccountKey;
 use rand::{rngs::StdRng, SeedableRng};
 
 fn account_keys_benchmarks(c: &mut Criterion) {
-    let mut rng: StdRng = SeedableRng::from_seed([100u8; 32]);
+    let mut rng: StdRng = SeedableRng::from_seed([10u8; 32]);
     let mut group = c.benchmark_group("AccountKey");
 
     group.bench_function("::random", |b| {
