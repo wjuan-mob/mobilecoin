@@ -3,6 +3,7 @@ on: [push]
 jobs:
   check-bats-version:
     runs-on: ubuntu-latest
+    container: mobilecoin/builder-install:v0.0.10
     steps:
       - uses: actions/checkout@v2
       - name: Update nightly
